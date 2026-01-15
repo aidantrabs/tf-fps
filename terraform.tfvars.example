@@ -1,0 +1,15 @@
+# aws config
+aws_region  = "us-east-1"
+environment = "dev"
+
+# network config
+vpc_cidr = "10.0.0.0/16"
+
+# allowed CIDR blocks for faster payments access
+allowed_cidr_blocks = [
+    "x.x.x.x/32",  # GY-FP-APP-T1
+    "x.x.x.x/32"   # GY-FP-WEB-T1
+]
+
+# application port
+fp_app_port = xxxx
