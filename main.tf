@@ -1,47 +1,55 @@
-
 /*
- *
- * @desc: VPC resource
+ * 
+ * @desc: VPC using public terraform-aws-modules/vpc/aws module
  *
  */
-resource "aws_vpc" "main" {
-    cidr_block = var.vpc_cidr
+module "vpc" {
+    source  = "terraform-aws-modules/vpc/aws"
+    version = "5.17.0"
+
+    name = "${var.environment}-vpc"
+    cidr = var.vpc_cidr
+
+    enable_dns_hostnames = true
+    enable_dns_support   = true
 
     tags = {
-        Name        = "${var.environment}-vpc"
         Environment = var.environment
     }
 }
 
 /*
  *
- * @desc: security group for faster payments mgs server
+ * @desc: security group using public terraform-aws-modules/security-group/aws module
  *
  */
-resource "aws_security_group" "faster_payments_mgs" {
+module "faster_payments_sg" {
+    source  = "terraform-aws-modules/security-group/aws"
+    version = "5.2.0"
+
     name        = "gy-fp-mgs-t1-sg"
     description = "Allow inbound traffic on BOG Faster Payments STG Environment"
-    vpc_id      = aws_vpc.main.id
+    vpc_id      = module.vpc.vpc_id
 
-    # inbound rule: allow TCP 7297
-    ingress {
-        description = "TCP 7297 from FP-APP-T1 and FP-WEB-T1"
-        from_port   = 7297
-        to_port     = 7297
-        protocol    = "tcp"
-        cidr_blocks = [
-            "172.27.98.94/32",  # GY-FP-APP-T1
-            "172.27.98.11/32"   # GY-FP-WEB-T1
-        ]
-    }
+    ingress_with_cidr_blocks = [
+        {
+            from_port   = var.fp_app_port
+            to_port     = var.fp_app_port
+            protocol    = "tcp"
+            description = "TCP ${var.fp_app_port} from FP-APP-T1 and FP-WEB-T1"
+            cidr_blocks = join(",", var.allowed_cidr_blocks)
+        }
+    ]
 
-    # outbound rule: allow all outbound traffic
-    egress {
-        from_port   = 0
-        to_port     = 0
-        protocol    = "-1"
-        cidr_blocks = ["0.0.0.0/0"]
-    }
+    egress_with_cidr_blocks = [
+        {
+            from_port   = 0
+            to_port     = 0
+            protocol    = "-1"
+            cidr_blocks = "0.0.0.0/0"
+            description = "Allow all outbound traffic"
+        }
+    ]
 
     tags = {
         Name        = "${var.environment}-GY-FP-MGS-T1-SG"
